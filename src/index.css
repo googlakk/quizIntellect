@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* QuizForge Design System - Modern Educational Platform
+/* QuizIntellect Design System - Intellect Pro School Platform
 All colors MUST be HSL for proper theming.
 */
 
@@ -20,21 +20,21 @@ All colors MUST be HSL for proper theming.
     --popover: 0 0% 100%;
     --popover-foreground: 228 40% 15%;
 
-    /* Primary - Education Blue */
-    --primary: 217 91% 60%;
+    /* Primary - Intellect Brown */
+    --primary: 28 42% 61%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 217 100% 70%;
-    --primary-dark: 217 91% 45%;
+    --primary-glow: 28 52% 71%;
+    --primary-dark: 28 42% 46%;
 
-    /* Secondary - Success Green */
-    --secondary: 142 76% 45%;
-    --secondary-foreground: 0 0% 100%;
-    --secondary-glow: 142 86% 60%;
+    /* Secondary - Warm Gold */
+    --secondary: 45 85% 60%;
+    --secondary-foreground: 28 42% 25%;
+    --secondary-glow: 45 95% 70%;
 
-    /* Accent - Creative Purple */
-    --accent: 262 83% 58%;
+    /* Accent - Education Blue */
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
-    --accent-glow: 262 93% 70%;
+    --accent-glow: 217 100% 70%;
 
     /* Warning - Energy Orange */
     --warning: 32 95% 55%;

@@ -55,7 +55,7 @@ export type Database = {
           full_name: string
           id: string
           login_username: string
-          subject: string
+          category: string
           updated_at: string
           user_id: string
         }
@@ -64,7 +64,7 @@ export type Database = {
           full_name: string
           id?: string
           login_username: string
-          subject: string
+          category: string
           updated_at?: string
           user_id: string
         }
@@ -73,7 +73,7 @@ export type Database = {
           full_name?: string
           id?: string
           login_username?: string
-          subject?: string
+          category?: string
           updated_at?: string
           user_id?: string
         }
@@ -117,7 +117,7 @@ export type Database = {
           },
         ]
       }
-      subjects: {
+      categories: {
         Row: {
           created_at: string
           description: string | null
@@ -187,7 +187,7 @@ export type Database = {
           id: string
           is_active: boolean
           max_score: number
-          subject_id: string
+          category_id: string
           time_limit_minutes: number | null
           title: string
           updated_at: string
@@ -199,7 +199,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_score?: number
-          subject_id: string
+          category_id: string
           time_limit_minutes?: number | null
           title: string
           updated_at?: string
@@ -211,17 +211,17 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_score?: number
-          subject_id?: string
+          category_id?: string
           time_limit_minutes?: number | null
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "tests_subject_id_fkey"
-            columns: ["subject_id"]
+            foreignKeyName: "tests_category_id_fkey"
+            columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: "subjects"
+            referencedRelation: "categories"
             referencedColumns: ["id"]
           },
         ]

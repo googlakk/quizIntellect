@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
@@ -22,7 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
   full_name: string;
-  subject: string;
+  category: string;
   login_username: string;
 }
 
@@ -32,6 +33,7 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, signOut, loading } = useAuth();
+  const { isAdmin, profile: userProfile } = useRole();
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -73,7 +75,7 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Главная', href: '/', icon: GraduationCap },
     { name: 'Тесты', href: '/tests', icon: BookOpen },
     { name: 'Рейтинг', href: '/leaderboard', icon: Trophy },
-    { name: 'Админ', href: '/admin', icon: Settings },
+    ...(isAdmin() ? [{ name: 'Админ', href: '/admin', icon: Settings }] : []),
   ];
 
   return (
@@ -88,7 +90,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <GraduationCap className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-                  QuizForge
+                  QuizIntellect
                 </span>
               </Link>
               
@@ -125,7 +127,7 @@ const Layout = ({ children }: LayoutProps) => {
                     </Avatar>
                     <div className="hidden md:block ml-2 text-left">
                       <p className="text-sm font-medium">{profile?.full_name || 'Пользователь'}</p>
-                      <p className="text-xs text-muted-foreground">{profile?.subject || 'Предмет'}</p>
+                      <p className="text-xs text-muted-foreground">{profile?.category || 'Раздел'}</p>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>

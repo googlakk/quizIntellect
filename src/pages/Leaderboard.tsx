@@ -8,21 +8,20 @@ import { Trophy, Medal, Award, Target, TrendingUp } from 'lucide-react';
 interface LeaderboardEntry {
   user_id: string;
   full_name: string;
-  subject: string;
+  total_tests_completed: number;
   total_score: number;
-  tests_completed: number;
   average_percentage: number;
-  test_results: { [subject: string]: number };
+  test_results: { [testTitle: string]: 'Пройден' | 'Не пройден' };
 }
 
-interface Subject {
+interface Test {
   id: string;
-  name: string;
+  title: string;
 }
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,71 +50,66 @@ const Leaderboard = () => {
 
   const fetchLeaderboardData = async () => {
     try {
-      // Fetch subjects
-      const { data: subjectsData } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name');
+      // Fetch all active tests
+      const { data: testsData } = await supabase
+        .from('tests')
+        .select('id, title')
+        .eq('is_active', true)
+        .order('title');
 
-      setSubjects(subjectsData || []);
+      setTests(testsData || []);
 
-      // Fetch all test results with user profiles and test data
+      // Fetch all users
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .order('full_name');
+
+      if (!usersData || !testsData) return;
+
+      // Fetch all test results
       const { data: resultsData } = await supabase
         .from('test_results')
         .select(`
-          *,
-          profiles(full_name, subject),
-          tests(
-            title,
-            subjects(name)
-          )
+          user_id,
+          test_id,
+          score,
+          percentage,
+          tests(title)
         `);
 
-      if (!resultsData) return;
-
-      // Group results by user and calculate aggregated data
-      const userResults = new Map<string, LeaderboardEntry>();
-
-      resultsData.forEach((result: any) => {
-        const userId = result.user_id;
-        const subjectName = result.tests?.subjects?.name || 'Неизвестный предмет';
+      // Create leaderboard entries for each user
+      const leaderboardData: LeaderboardEntry[] = usersData.map(user => {
+        const userResults = resultsData?.filter(r => r.user_id === user.user_id) || [];
         
-        if (!userResults.has(userId)) {
-          userResults.set(userId, {
-            user_id: userId,
-            full_name: result.profiles?.full_name || 'Неизвестный пользователь',
-            subject: result.profiles?.subject || 'Не указан',
-            total_score: 0,
-            tests_completed: 0,
-            average_percentage: 0,
-            test_results: {}
-          });
-        }
+        // Calculate test results status for each test
+        const testResults: { [testTitle: string]: 'Пройден' | 'Не пройден' } = {};
+        testsData.forEach(test => {
+          const hasResult = userResults.some(r => r.test_id === test.id);
+          testResults[test.title] = hasResult ? 'Пройден' : 'Не пройден';
+        });
 
-        const entry = userResults.get(userId)!;
-        entry.total_score += result.score;
-        entry.tests_completed += 1;
-        
-        // Store the best result for each subject
-        if (!entry.test_results[subjectName] || entry.test_results[subjectName] < result.score) {
-          entry.test_results[subjectName] = result.score;
-        }
+        // Calculate totals
+        const totalScore = userResults.reduce((sum, r) => sum + r.score, 0);
+        const totalPercentage = userResults.reduce((sum, r) => sum + r.percentage, 0);
+        const averagePercentage = userResults.length > 0 ? totalPercentage / userResults.length : 0;
+
+        return {
+          user_id: user.user_id,
+          full_name: user.full_name || 'Неизвестный пользователь',
+          total_tests_completed: userResults.length,
+          total_score: totalScore,
+          average_percentage: averagePercentage,
+          test_results: testResults
+        };
       });
 
-      // Calculate average percentages and sort by total score
-      const leaderboardData = Array.from(userResults.values()).map(entry => {
-        const totalPercentage = resultsData
-          .filter(r => r.user_id === entry.user_id)
-          .reduce((sum, r) => sum + r.percentage, 0);
-        
-        entry.average_percentage = entry.tests_completed > 0 
-          ? totalPercentage / entry.tests_completed 
-          : 0;
-        
-        return entry;
-      }).sort((a, b) => b.total_score - a.total_score);
+      // Filter out users with no test results and sort by total score descending
+      const filteredData = leaderboardData
+        .filter(entry => entry.total_tests_completed > 0)
+        .sort((a, b) => b.total_score - a.total_score);
 
-      setLeaderboard(leaderboardData);
+      setLeaderboard(filteredData);
     } catch (error) {
       console.error('Error fetching leaderboard data:', error);
     } finally {
@@ -199,11 +193,11 @@ const Leaderboard = () => {
 
         <Card className="shadow-medium">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Активных предметов</CardTitle>
+            <CardTitle className="text-sm font-medium">Доступных тестов</CardTitle>
             <TrendingUp className="h-4 w-4 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-secondary">{subjects.length}</div>
+            <div className="text-2xl font-bold text-secondary">{tests.length}</div>
           </CardContent>
         </Card>
 
@@ -259,23 +253,25 @@ const Leaderboard = () => {
                           #{index + 1}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{entry.subject}</p>
                       <p className="text-xs text-muted-foreground">
-                        Тестов пройдено: {entry.tests_completed} | 
+                        Тестов пройдено: {entry.total_tests_completed} | 
                         Средний балл: {Math.round(entry.average_percentage)}%
                       </p>
                     </div>
                   </div>
 
-                  {/* Subject scores */}
+                  {/* Test results status */}
                   <div className="hidden lg:flex items-center space-x-2 mr-4">
-                    {subjects.slice(0, 4).map(subject => (
-                      <div key={subject.id} className="text-center min-w-[60px]">
+                    {tests.slice(0, 4).map(test => (
+                      <div key={test.id} className="text-center min-w-[80px]">
                         <div className="text-xs text-muted-foreground mb-1 truncate">
-                          {subject.name}
+                          {test.title}
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {entry.test_results[subject.name] || '-'}
+                        <Badge 
+                          variant={entry.test_results[test.title] === 'Пройден' ? 'default' : 'outline'} 
+                          className="text-xs"
+                        >
+                          {entry.test_results[test.title] === 'Пройден' ? '✓' : '✗'}
                         </Badge>
                       </div>
                     ))}
@@ -287,6 +283,9 @@ const Leaderboard = () => {
                     </div>
                     <div className="text-sm text-muted-foreground">
                       баллов
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {Math.round(entry.average_percentage)}% средний
                     </div>
                   </div>
                 </div>
@@ -304,13 +303,13 @@ const Leaderboard = () => {
         </CardContent>
       </Card>
 
-      {/* Subject Breakdown */}
-      {subjects.length > 0 && (
+      {/* Test Results Breakdown */}
+      {tests.length > 0 && (
         <Card className="shadow-medium">
           <CardHeader>
-            <CardTitle>Результаты по предметам</CardTitle>
+            <CardTitle>Результаты по тестам</CardTitle>
             <CardDescription>
-              Детальная разбивка результатов по каждому предмету
+              Детальная разбивка результатов по каждому тесту
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -319,12 +318,12 @@ const Leaderboard = () => {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 font-medium">Участник</th>
-                    {subjects.map(subject => (
-                      <th key={subject.id} className="text-center py-2 font-medium min-w-[100px]">
-                        {subject.name}
+                    {tests.map(test => (
+                      <th key={test.id} className="text-center py-2 font-medium min-w-[120px]">
+                        {test.title}
                       </th>
                     ))}
-                    <th className="text-center py-2 font-medium">Общий балл</th>
+                    <th className="text-center py-2 font-medium">Общий результат</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -336,18 +335,23 @@ const Leaderboard = () => {
                           <span className="truncate">{entry.full_name}</span>
                         </div>
                       </td>
-                      {subjects.map(subject => (
-                        <td key={subject.id} className="text-center py-3">
+                      {tests.map(test => (
+                        <td key={test.id} className="text-center py-3">
                           <Badge 
-                            variant={entry.test_results[subject.name] ? "default" : "outline"}
+                            variant={entry.test_results[test.title] === 'Пройден' ? "default" : "outline"}
                             className="text-xs"
                           >
-                            {entry.test_results[subject.name] || '-'}
+                            {entry.test_results[test.title]}
                           </Badge>
                         </td>
                       ))}
                       <td className="text-center py-3">
-                        <span className="font-bold text-primary">{entry.total_score}</span>
+                        <div>
+                          <span className="font-bold text-primary">{entry.total_score} баллов</span>
+                          <div className="text-xs text-muted-foreground">
+                            {entry.total_tests_completed}/{tests.length} пройдено
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}

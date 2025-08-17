@@ -150,10 +150,10 @@ const Dashboard = () => {
       {/* Welcome Section */}
       <div className="text-center py-8">
         <h1 className="text-4xl font-bold bg-gradient-hero bg-clip-text text-transparent mb-4">
-          Добро пожаловать в QuizForge
+          Добро пожаловать в Intellect Pro School
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Изучайте, тестируйтесь и отслеживайте свой прогресс в режиме реального времени
+          Платформа онлайн-обучения и тестирования для учеников и преподавателей
         </p>
       </div>
 

@@ -1,73 +1,67 @@
-# Welcome to your Lovable project
+# QuizIntellect - Intellect Pro School
 
-## Project info
+Внутренняя платформа онлайн-тестирования и обучения для частной школы **Intellect Pro School** в Бишкеке.
 
-**URL**: https://lovable.dev/projects/5be74239-45b5-42df-b4fc-0299f13be2a1
+## О школе
 
-## How can I edit this code?
+**Intellect Pro School** - частная общеобразовательная школа нового поколения, основанная на базе одноименного образовательного центра.
 
-There are several ways of editing your application.
+### Основные принципы школы:
+- 🧠 **Развитие интеллекта** - Ментальная арифметика, скорочтение, супер-память
+- 💻 **IT-образование** - Современные знания в области программирования
+- 🌍 **Английский язык** - Уверенное владение английским языком
+- 🏆 **Участие в олимпиадах** - Возможности участия в мировых олимпиадах и чемпионатах
+- 📚 **Интегрированное обучение** - Домашние задания выполняются в школе
 
-**Use Lovable**
+### Контактная информация:
+- **Адрес:** ул. Джунусалиева 177/1, Бишкек
+- **Телефон:** +996705889889, +996778889889
+- **Email:** intellect.school.bishkek@gmail.com
+- **Сайт:** https://intellect.edu.kg/
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5be74239-45b5-42df-b4fc-0299f13be2a1) and start prompting.
+## О платформе
 
-Changes made via Lovable will be committed automatically to this repo.
+QuizIntellect - это внутренняя разработка Intellect Pro School для организации онлайн-тестирования и мониторинга успеваемости учеников.
 
-**Use your preferred IDE**
+### Возможности платформы:
+- ✅ Создание и управление тестами
+- 📊 Отслеживание результатов в реальном времени
+- 🏆 Система рейтингов и достижений
+- 👥 Управление пользователями (ученики/преподаватели)
+- 📈 Аналитика и отчеты
+- 🎯 Разделение по категориям знаний
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Технологии:
+- **Frontend:** React + TypeScript + Vite
+- **UI:** Shadcn/ui + Tailwind CSS
+- **Backend:** Supabase
+- **Тестирование:** Playwright
+- **Развертывание:** Vercel/Netlify
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Разработка
 
-Follow these steps:
+```bash
+# Установка зависимостей
+npm install
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Запуск в режиме разработки
 npm run dev
+
+# Сборка для продакшена
+npm run build
+
+# Линтинг кода
+npm run lint
+
+# Запуск тестов
+npx playwright test
 ```
 
-**Edit a file directly in GitHub**
+## Лицензия
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+© 2025 Intellect Pro School. Все права защищены.
+Эта платформа является внутренней разработкой школы и предназначена исключительно для использования в образовательных целях Intellect Pro School.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/5be74239-45b5-42df-b4fc-0299f13be2a1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+*Разработано командой Intellect Pro School Development Team*

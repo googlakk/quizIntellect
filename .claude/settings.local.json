@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx playwright:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run lint)",
+      "Bash(node:*)",
+      "WebSearch"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

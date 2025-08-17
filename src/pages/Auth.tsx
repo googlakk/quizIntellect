@@ -31,7 +31,7 @@ const Auth = () => {
       email: '',
       password: '',
       fullName: '',
-      subject: '',
+      category: '',
       loginUsername: '',
     },
   });
@@ -68,7 +68,7 @@ const Auth = () => {
       data.email, 
       data.password, 
       data.fullName, 
-      data.subject, 
+      data.category, 
       data.loginUsername
     );
     
@@ -186,13 +186,13 @@ const Auth = () => {
                     />
                     <FormField
                       control={signUpForm.control}
-                      name="subject"
+                      name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Предмет</FormLabel>
+                          <FormLabel>Категория</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder="Математика"
+                              placeholder="Компьютерная грамотность"
                               className="transition-all duration-medium focus:shadow-soft"
                               {...field}
                             />

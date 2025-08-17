@@ -252,10 +252,10 @@ const TakeTest = () => {
         description: `Ваш результат: ${Math.round(percentage)}% (${totalScore}/${test.max_score})`,
       });
 
-      // Небольшая задержка, чтобы данные успели сохраниться
+      // Увеличиваем задержку, чтобы данные точно успели сохраниться
       setTimeout(() => {
         navigate(`/test/${test.id}/result`);
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('Error submitting test:', error);
       toast({

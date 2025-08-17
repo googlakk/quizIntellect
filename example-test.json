@@ -1,0 +1,136 @@
+{
+  "title": "Основы компьютерной грамотности",
+  "description": "Тест для проверки базовых знаний работы с компьютером и интернетом",
+  "category": "Компьютерная грамотность",
+  "time_limit_minutes": 25,
+  "questions": [
+    {
+      "question_text": "Что такое операционная система?",
+      "question_type": "single_choice",
+      "points": 2,
+      "options": [
+        {
+          "text": "Программа для работы с файлами",
+          "correct": false
+        },
+        {
+          "text": "Основная программа, управляющая работой компьютера",
+          "correct": true
+        },
+        {
+          "text": "Антивирусная программа",
+          "correct": false
+        },
+        {
+          "text": "Программа для выхода в интернет",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Какие из перечисленных программ являются веб-браузерами? (выберите все правильные)",
+      "question_type": "multiple_choice",
+      "points": 3,
+      "options": [
+        {
+          "text": "Google Chrome",
+          "correct": true
+        },
+        {
+          "text": "Mozilla Firefox",
+          "correct": true
+        },
+        {
+          "text": "Microsoft Word",
+          "correct": false
+        },
+        {
+          "text": "Safari",
+          "correct": true
+        },
+        {
+          "text": "Adobe Photoshop",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Для чего используется комбинация клавиш Ctrl+C?",
+      "question_type": "single_choice",
+      "points": 1,
+      "options": [
+        {
+          "text": "Копирование выделенного текста или объекта",
+          "correct": true
+        },
+        {
+          "text": "Вставка скопированного текста",
+          "correct": false
+        },
+        {
+          "text": "Вырезание текста",
+          "correct": false
+        },
+        {
+          "text": "Отмена последнего действия",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Что такое URL?",
+      "question_type": "single_choice",
+      "points": 2,
+      "options": [
+        {
+          "text": "Имя пользователя в интернете",
+          "correct": false
+        },
+        {
+          "text": "Адрес веб-страницы в интернете",
+          "correct": true
+        },
+        {
+          "text": "Тип файла",
+          "correct": false
+        },
+        {
+          "text": "Пароль для входа на сайт",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "question_text": "Опишите своими словами, что такое компьютерный вирус и как от него защититься",
+      "question_type": "text",
+      "points": 5
+    },
+    {
+      "question_text": "Какие действия помогают обеспечить безопасность в интернете? (выберите все правильные)",
+      "question_type": "multiple_choice",
+      "points": 4,
+      "options": [
+        {
+          "text": "Использование сложных паролей",
+          "correct": true
+        },
+        {
+          "text": "Обновление программ и операционной системы",
+          "correct": true
+        },
+        {
+          "text": "Переход по любым ссылкам в электронных письмах",
+          "correct": false
+        },
+        {
+          "text": "Использование антивирусных программ",
+          "correct": true
+        },
+        {
+          "text": "Сохранение паролей в браузере на чужих компьютерах",
+          "correct": false
+        }
+      ]
+    }
+  ]
+}

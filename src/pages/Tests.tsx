@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
   Clock, 
@@ -37,12 +37,13 @@ interface Test {
 
 interface TestResult {
   percentage: number;
-  created_at: string;
+  completed_at: string;
 }
 
 const Tests = () => {
   const { user } = useAuth();
   const { isAdmin } = useRole();
+  const location = useLocation();
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [userResults, setUserResults] = useState<Record<string, TestResult>>({});
@@ -56,6 +57,25 @@ const Tests = () => {
       fetchUserResults();
     }
   }, [user]);
+
+  // Обновляем данные когда пользователь возвращается на страницу
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        fetchUserResults();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
+
+  // Обновляем данные при изменении маршрута (возврат с других страниц)
+  useEffect(() => {
+    if (user && location.pathname === '/tests') {
+      fetchUserResults();
+    }
+  }, [location.pathname, user]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -93,17 +113,25 @@ const Tests = () => {
   const fetchUserResults = async () => {
     if (!user) return;
 
-    const { data } = await supabase
+    console.log('🔄 Обновляем результаты пользователя...');
+
+    const { data, error } = await supabase
       .from('test_results')
-      .select('test_id, percentage, created_at')
+      .select('test_id, percentage, completed_at')
       .eq('user_id', user.id);
 
+    if (error) {
+      console.error('❌ Ошибка при загрузке результатов:', error);
+      return;
+    }
+
     if (data) {
+      console.log(`✅ Загружено ${data.length} результатов тестов`);
       const resultsMap: Record<string, TestResult> = {};
       data.forEach(result => {
         resultsMap[result.test_id] = {
           percentage: result.percentage,
-          created_at: result.created_at
+          completed_at: result.completed_at
         };
       });
       setUserResults(resultsMap);
@@ -204,7 +232,12 @@ const Tests = () => {
       </div>
 
       {/* Tests Tabs */}
-      <Tabs defaultValue="available" className="w-full">
+      <Tabs defaultValue="available" className="w-full" onValueChange={(value) => {
+        if (value === 'completed' && user) {
+          // Обновляем результаты при переходе на вкладку завершенных тестов
+          fetchUserResults();
+        }
+      }}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="available">
             Доступные тесты ({availableTests.length})
@@ -353,7 +386,7 @@ const CompletedTestCard = ({ test, result }: { test: Test; result: TestResult })
         
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Дата прохождения:</span>
-          <span>{new Date(result.created_at).toLocaleDateString('ru-RU')}</span>
+          <span>{new Date(result.completed_at).toLocaleDateString('ru-RU')}</span>
         </div>
         
         <Button variant="outline" className="w-full" asChild>

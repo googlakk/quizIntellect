@@ -23,7 +23,7 @@ interface TestResult {
   max_score: number;
   percentage: number;
   time_taken_minutes: number;
-  created_at: string;
+  completed_at: string;
   tests: {
     title: string;
     description: string;
@@ -63,7 +63,7 @@ const TestResult = () => {
         `)
         .eq('test_id', testId)
         .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+        .order('completed_at', { ascending: false })
         .single();
 
       console.log('Test result query:', { data, error });
@@ -221,7 +221,7 @@ const TestResult = () => {
                   <span className="text-sm">Дата прохождения</span>
                 </div>
                 <span className="font-medium">
-                  {new Date(result.created_at).toLocaleDateString('ru-RU')}
+                  {new Date(result.completed_at).toLocaleDateString('ru-RU')}
                 </span>
               </div>
             </div>

@@ -6,7 +6,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint)",
       "Bash(node:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run dev:*)"
     ],
     "defaultMode": "acceptEdits"
   }

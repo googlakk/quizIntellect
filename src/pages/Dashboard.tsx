@@ -28,7 +28,7 @@ interface DashboardStats {
 interface RecentTest {
   id: string;
   title: string;
-  subject: string;
+  category: string;
   score: number;
   max_score: number;
   percentage: number;
@@ -58,7 +58,7 @@ const Dashboard = () => {
           *,
           tests:test_id (
             title,
-            subjects:subject_id (name)
+            categories:category_id (name)
           )
         `)
         .eq('user_id', user.id)
@@ -115,7 +115,7 @@ const Dashboard = () => {
       const formattedRecentTests = results?.slice(0, 5).map(result => ({
         id: result.id,
         title: result.tests?.title || 'Неизвестный тест',
-        subject: result.tests?.subjects?.name || 'Неизвестный предмет',
+        category: result.tests?.categories?.name || 'Неизвестная категория',
         score: result.score,
         max_score: result.max_score,
         percentage: result.percentage,
@@ -238,7 +238,7 @@ const Dashboard = () => {
                     <div key={test.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors duration-medium">
                       <div className="flex-1">
                         <h4 className="font-medium">{test.title}</h4>
-                        <p className="text-sm text-muted-foreground">{test.subject}</p>
+                        <p className="text-sm text-muted-foreground">{test.category}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(test.completed_at).toLocaleDateString('ru-RU')}
                         </p>

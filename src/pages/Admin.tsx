@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import ImportTest from '@/components/ImportTest';
 import { 
   Plus, 
   Edit, 
@@ -378,13 +379,15 @@ const Admin = () => {
         <TabsContent value="tests" className="mt-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Управление тестами</h2>
-            <Dialog open={createTestOpen} onOpenChange={setCreateTestOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Создать тест
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <ImportTest onSuccess={fetchTests} />
+              <Dialog open={createTestOpen} onOpenChange={setCreateTestOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Создать тест
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Создать новый тест</DialogTitle>
@@ -428,7 +431,8 @@ const Admin = () => {
                   </Button>
                 </form>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">

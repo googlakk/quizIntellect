@@ -1,8 +1,9 @@
 // Простой скрипт для миграции ролей в Supabase
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
 // Загружаем переменные окружения из .env.local если он существует
-require('dotenv').config({ path: '.env.local' });
+dotenv.config({ path: '.env.local' });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY;

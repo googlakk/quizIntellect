@@ -14,7 +14,266 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answer_options: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          option_text: string
+          order_index: number
+          question_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          option_text: string
+          order_index?: number
+          question_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          option_text?: string
+          order_index?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answer_options_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          login_username: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          login_username: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          login_username?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number
+          points: number
+          question_text: string
+          question_type: string
+          test_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          points?: number
+          question_text: string
+          question_type?: string
+          test_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          points?: number
+          question_text?: string
+          question_type?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      test_results: {
+        Row: {
+          completed_at: string
+          id: string
+          max_score: number
+          percentage: number
+          score: number
+          test_id: string
+          time_taken_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          max_score: number
+          percentage?: number
+          score?: number
+          test_id: string
+          time_taken_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          max_score?: number
+          percentage?: number
+          score?: number
+          test_id?: string
+          time_taken_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_results_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          max_score: number
+          subject_id: string
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          subject_id: string
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          subject_id?: string
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_answers: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          points_earned: number
+          question_id: string
+          selected_option_ids: string[] | null
+          test_result_id: string
+          text_answer: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id: string
+          selected_option_ids?: string[] | null
+          test_result_id: string
+          text_answer?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id?: string
+          selected_option_ids?: string[] | null
+          test_result_id?: string
+          text_answer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_answers_test_result_id_fkey"
+            columns: ["test_result_id"]
+            isOneToOne: false
+            referencedRelation: "test_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

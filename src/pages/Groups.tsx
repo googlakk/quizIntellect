@@ -7,10 +7,29 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Award, Trophy, Medal, Target } from 'lucide-react';
 
+interface GroupMember {
+  id: string;
+  user_id: string;
+  performance_tier: 'high' | 'medium' | 'low';
+  total_score: number;
+  average_percentage: number;
+  profiles: {
+    full_name: string;
+    login_username: string;
+  };
+}
+
+interface UserGroup {
+  id: string;
+  name: string;
+  description?: string;
+  group_members: GroupMember[];
+}
+
 const Groups = () => {
   const { user } = useAuth();
   const { getUserGroup } = useGroups();
-  const [userGroup, setUserGroup] = useState<any>(null);
+  const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -119,9 +138,9 @@ const Groups = () => {
     }
   };
 
-  const getCurrentUserMember = () => {
+  const getCurrentUserMember = (): GroupMember | null => {
     if (!userGroup || !user?.id) return null;
-    return userGroup.group_members.find((member: any) => member.user_id === user.id);
+    return userGroup.group_members.find((member) => member.user_id === user.id) || null;
   };
 
   if (loading) {
@@ -192,8 +211,8 @@ const Groups = () => {
               <div className="space-y-3">
                 {userGroup.group_members && userGroup.group_members.length > 0 ? (
                   userGroup.group_members
-                    .sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0))
-                    .map((member: any, index: number) => {
+                    .sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+                    .map((member, index) => {
                       const tierInfo = getPerformanceTierInfo(member.performance_tier);
                       const isCurrentUser = member.user_id === user?.id;
                       

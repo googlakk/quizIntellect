@@ -52,6 +52,27 @@ interface Category {
   description: string | null;
 }
 
+interface GroupMember {
+  id: string;
+  user_id: string;
+  performance_tier: 'high' | 'medium' | 'low';
+  total_score: number;
+  average_percentage: number;
+  profiles: {
+    full_name: string;
+    login_username: string;
+  };
+}
+
+interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  group_size: number;
+  is_active: boolean;
+  group_members: GroupMember[];
+}
+
 const Admin = () => {
   const { user } = useAuth();
   const { 
@@ -74,10 +95,15 @@ const Admin = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [editGroupOpen, setEditGroupOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupSize, setGroupSize] = useState<number>(7);
   const [groupName, setGroupName] = useState<string>('Команда');
-  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<Array<{
+    user_id: string;
+    full_name: string;
+    total_score: number;
+    average_percentage: number;
+  }>>([]);
 
   useEffect(() => {
     fetchTests();
@@ -284,7 +310,7 @@ const Admin = () => {
     await deleteGroup(groupId);
   };
 
-  const handleEditGroup = async (group: any) => {
+  const handleEditGroup = async (group: Group) => {
     setEditingGroup(group);
     const users = await getAvailableUsers(group.id);
     setAvailableUsers(users);
@@ -899,7 +925,7 @@ const Admin = () => {
                     
                     {/* Current Members */}
                     <div className="space-y-2 mb-4">
-                      {editingGroup.group_members.map((member: any) => (
+                      {editingGroup.group_members.map((member) => (
                         <div key={member.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center space-x-3">
                             <Avatar className="w-8 h-8">

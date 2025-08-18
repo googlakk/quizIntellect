@@ -141,7 +141,7 @@ export const useGroups = () => {
     }[] = Array.from({ length: totalGroups }, () => ({ members: [] }));
 
     // Функция для перемешивания массива
-    const shuffle = <T>(array: T[]): T[] => {
+    const shuffle = <T,>(array: T[]): T[] => {
       const result = [...array];
       for (let i = result.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -386,8 +386,9 @@ export const useGroups = () => {
       });
 
       await fetchGroups();
-    } catch (error: any) {
-      if (error.code === '23505') { // Unique constraint violation
+    } catch (error) {
+      const dbError = error as { code?: string };
+      if (dbError.code === '23505') { // Unique constraint violation
         toast({
           title: "Ошибка",
           description: "Пользователь уже состоит в этой группе",

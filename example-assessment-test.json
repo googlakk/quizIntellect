@@ -1,0 +1,56 @@
+{
+  "title": "Пример оценочного теста: Навыки работы с компьютером",
+  "description": "Оцените свой уровень владения основными компьютерными навыками",
+  "category": "Самооценка навыков",
+  "test_type": "assessment",
+  "time_limit_minutes": 15,
+  "assessment_scales": [
+    {
+      "label": "Плохо владею (требуется обучение)",
+      "points": 1,
+      "order_index": 0
+    },
+    {
+      "label": "Базовые навыки (знаю основы)",
+      "points": 2,
+      "order_index": 1
+    },
+    {
+      "label": "Хорошо владею (уверенно использую)",
+      "points": 3,
+      "order_index": 2
+    },
+    {
+      "label": "Отлично владею (эксперт)",
+      "points": 4,
+      "order_index": 3
+    }
+  ],
+  "questions": [
+    {
+      "question_text": "Как вы оцениваете свои навыки работы с текстовыми редакторами (Word, Google Docs)?",
+      "question_type": "single_choice",
+      "points": 4
+    },
+    {
+      "question_text": "Как вы оцениваете свои навыки работы с электронными таблицами (Excel, Google Sheets)?",
+      "question_type": "single_choice",
+      "points": 4
+    },
+    {
+      "question_text": "Как вы оцениваете свои навыки работы с презентациями (PowerPoint, Google Slides)?",
+      "question_type": "single_choice",
+      "points": 4
+    },
+    {
+      "question_text": "Как вы оцениваете свои навыки поиска информации в интернете?",
+      "question_type": "single_choice",
+      "points": 4
+    },
+    {
+      "question_text": "Как вы оцениваете свои навыки работы с электронной почтой?",
+      "question_type": "single_choice",
+      "points": 4
+    }
+  ]
+}

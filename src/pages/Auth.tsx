@@ -189,7 +189,7 @@ const Auth = () => {
                       name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Предмет</FormLabel>
+                          <FormLabel>Предмет  </FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Математика"

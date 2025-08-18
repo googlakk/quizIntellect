@@ -23,6 +23,14 @@ export const createTestSchema = z.object({
   time_limit_minutes: z.number().min(1, 'Лимит времени должен быть больше 0').optional(),
 });
 
+export const editTestSchema = z.object({
+  title: z.string().min(3, 'Название теста должно содержать минимум 3 символа'),
+  description: z.string().optional(),
+  category_id: z.string().uuid('Выберите корректную категорию'),
+  time_limit_minutes: z.number().min(1, 'Лимит времени должен быть больше 0').optional(),
+  is_active: z.boolean(),
+});
+
 export const createSubjectSchema = z.object({
   name: z.string().min(2, 'Название предмета должно содержать минимум 2 символа'),
   description: z.string().optional(),
@@ -36,6 +44,7 @@ export const createQuestionSchema = z.object({
   }),
   points: z.number().min(1, 'Количество баллов должно быть больше 0'),
   order_index: z.number().min(0, 'Порядковый номер не может быть отрицательным'),
+  time_limit_seconds: z.number().min(1, 'Время должно быть больше 0').optional(),
 });
 
 export const answerOptionSchema = z.object({
@@ -45,17 +54,27 @@ export const answerOptionSchema = z.object({
 });
 
 export const createQuestionWithOptionsSchema = createQuestionSchema.extend({
-  answer_options: z.array(answerOptionSchema).min(2, 'Необходимо минимум 2 варианта ответа')
-    .refine(
-      (options) => {
-        const correctOptions = options.filter(option => option.is_correct);
-        return correctOptions.length >= 1;
-      },
-      {
-        message: 'Должен быть выбран минимум один правильный ответ',
-      }
-    ),
-});
+  answer_options: z.array(answerOptionSchema).optional(),
+}).refine(
+  (data) => {
+    // Для оценочных тестов варианты ответов не нужны
+    if (data.question_type === 'text') {
+      return true; // Текстовые вопросы не требуют вариантов ответов
+    }
+    
+    // Для обычных тестов требуем варианты ответов
+    if (!data.answer_options || data.answer_options.length < 2) {
+      return false;
+    }
+    
+    const correctOptions = data.answer_options.filter(option => option.is_correct);
+    return correctOptions.length >= 1;
+  },
+  {
+    message: 'Для вопросов с выбором необходимо минимум 2 варианта ответа и один правильный',
+    path: ['answer_options']
+  }
+);
 
 // User profile validation schema
 export const updateProfileSchema = z.object({
@@ -96,18 +115,40 @@ export const importQuestionSchema = z.object({
     ).optional(),
 });
 
+// Assessment scale schema for import
+export const importAssessmentScaleSchema = z.object({
+  label: z.string().min(1, 'Название уровня оценки обязательно'),
+  points: z.number().min(1, 'Количество баллов должно быть больше 0'),
+  order_index: z.number().min(0, 'Порядковый номер не может быть отрицательным').optional(),
+});
+
 export const importTestSchema = z.object({
   title: z.string().min(3, 'Название теста должно содержать минимум 3 символа'),
   description: z.string().optional(),
   category: z.string().min(2, 'Название категории должно содержать минимум 2 символа'),
   time_limit_minutes: z.number().min(1, 'Лимит времени должен быть больше 0').optional(),
+  test_type: z.enum(['quiz', 'assessment']).default('quiz'),
   questions: z.array(importQuestionSchema).min(1, 'Тест должен содержать минимум 1 вопрос'),
-});
+  assessment_scales: z.array(importAssessmentScaleSchema).optional(),
+}).refine(
+  (data) => {
+    // Для оценочных тестов требуем шкалу оценок
+    if (data.test_type === 'assessment') {
+      return data.assessment_scales && data.assessment_scales.length >= 2;
+    }
+    return true;
+  },
+  {
+    message: 'Для оценочных тестов необходимо указать минимум 2 уровня в шкале оценок',
+    path: ['assessment_scales']
+  }
+);
 
 // Export types for TypeScript
 export type SignInFormData = z.infer<typeof signInSchema>;
 export type SignUpFormData = z.infer<typeof signUpSchema>;
 export type CreateTestFormData = z.infer<typeof createTestSchema>;
+export type EditTestFormData = z.infer<typeof editTestSchema>;
 export type CreateSubjectFormData = z.infer<typeof createSubjectSchema>;
 export type CreateQuestionFormData = z.infer<typeof createQuestionSchema>;
 export type CreateQuestionWithOptionsFormData = z.infer<typeof createQuestionWithOptionsSchema>;
@@ -116,3 +157,4 @@ export type SearchFormData = z.infer<typeof searchSchema>;
 export type ImportTestFormData = z.infer<typeof importTestSchema>;
 export type ImportQuestionFormData = z.infer<typeof importQuestionSchema>;
 export type ImportAnswerOptionFormData = z.infer<typeof importAnswerOptionSchema>;
+export type ImportAssessmentScaleFormData = z.infer<typeof importAssessmentScaleSchema>;

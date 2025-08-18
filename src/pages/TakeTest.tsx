@@ -40,10 +40,17 @@ interface Test {
   description: string | null;
   max_score: number;
   time_limit_minutes: number | null;
+  test_type: string;
   categories: {
     name: string;
   };
   questions: Question[];
+  assessment_scales?: {
+    id: string;
+    label: string;
+    points: number;
+    order_index: number;
+  }[];
 }
 
 interface UserAnswer {
@@ -64,6 +71,8 @@ const TakeTest = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(new Date());
+  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showAutoAdvance, setShowAutoAdvance] = useState(false);
 
   useEffect(() => {
     if (testId) {
@@ -92,6 +101,15 @@ const TakeTest = () => {
       return () => clearInterval(timer);
     }
   }, [timeLeft]);
+
+  // Очистка таймера автоперехода при размонтировании
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimer) {
+        clearTimeout(autoAdvanceTimer);
+      }
+    };
+  }, [autoAdvanceTimer]);
 
   const fetchTest = async () => {
     try {
@@ -128,6 +146,12 @@ const TakeTest = () => {
               order_index,
               is_correct
             )
+          ),
+          assessment_scales (
+            id,
+            label,
+            points,
+            order_index
           )
         `)
         .eq('id', testId)
@@ -152,7 +176,16 @@ const TakeTest = () => {
           answer_options: q.answer_options.sort((a, b) => a.order_index - b.order_index)
         }));
 
-      setTest({ ...data, questions: sortedQuestions } as Test);
+      // Sort assessment scales if they exist
+      const sortedAssessmentScales = data.assessment_scales
+        ? data.assessment_scales.sort((a, b) => a.order_index - b.order_index)
+        : [];
+
+      setTest({ 
+        ...data, 
+        questions: sortedQuestions,
+        assessment_scales: sortedAssessmentScales
+      } as Test);
     } catch (error) {
       console.error('Error fetching test:', error);
       toast({
@@ -175,6 +208,25 @@ const TakeTest = () => {
         textAnswer: isText ? (value as string) : ''
       }
     }));
+
+    // Очищаем предыдущий таймер, если он есть
+    if (autoAdvanceTimer) {
+      clearTimeout(autoAdvanceTimer);
+    }
+
+    // Автоматический переход на следующий вопрос после ответа
+    // Только для вопросов с выбором (не текстовых)
+    if (!isText && currentQuestionIndex < test!.questions.length - 1) {
+      setShowAutoAdvance(true);
+      
+      const timer = setTimeout(() => {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setAutoAdvanceTimer(null);
+        setShowAutoAdvance(false);
+      }, 800); // Небольшая задержка для лучшего UX
+      
+      setAutoAdvanceTimer(timer);
+    }
   };
 
   const handleSubmitTest = async () => {
@@ -195,7 +247,19 @@ const TakeTest = () => {
         let isCorrect = false;
         let pointsEarned = 0;
 
-        if (question.question_type === 'multiple_choice' || question.question_type === 'single_choice') {
+        if (test.test_type === 'assessment') {
+          // Для оценочных тестов - все ответы правильные, баллы берутся из шкалы
+          isCorrect = true;
+          if (userAnswer?.selectedOptions.length > 0 && test.assessment_scales) {
+            const selectedScaleId = userAnswer.selectedOptions[0];
+            const selectedScale = test.assessment_scales.find(scale => scale.id === selectedScaleId);
+            if (selectedScale) {
+              pointsEarned = selectedScale.points;
+              totalScore += pointsEarned;
+            }
+          }
+        } else if (question.question_type === 'multiple_choice' || question.question_type === 'single_choice') {
+          // Для обычных тестов - проверяем правильность ответов
           const correctOptions = question.answer_options
             .filter(opt => opt.is_correct)
             .map(opt => opt.id);
@@ -278,6 +342,16 @@ const TakeTest = () => {
     return Object.keys(userAnswers).length;
   };
 
+  const navigateToQuestion = (index: number) => {
+    // Очищаем таймер автоперехода при ручной навигации
+    if (autoAdvanceTimer) {
+      clearTimeout(autoAdvanceTimer);
+      setAutoAdvanceTimer(null);
+      setShowAutoAdvance(false);
+    }
+    setCurrentQuestionIndex(index);
+  };
+
   if (loading || !test) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -307,7 +381,12 @@ const TakeTest = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl">{test.title}</CardTitle>
+              <div className="flex items-center space-x-3 mb-2">
+                <CardTitle className="text-2xl">{test.title}</CardTitle>
+                <Badge variant={test.test_type === 'assessment' ? "secondary" : "default"}>
+                  {test.test_type === 'assessment' ? 'Оценочный тест' : 'Обычный тест'}
+                </Badge>
+              </div>
               <CardDescription>{test.categories.name}</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
@@ -359,15 +438,26 @@ const TakeTest = () => {
             question={currentQuestion}
             userAnswer={userAnswers[currentQuestion.id]}
             onAnswerChange={handleAnswerChange}
+            test={test}
           />
         </CardContent>
       </Card>
+
+      {/* Auto Advance Notification */}
+      {showAutoAdvance && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+          <div className="flex items-center justify-center space-x-2 text-blue-800">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="text-sm">Переход к следующему вопросу...</span>
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
-          onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+          onClick={() => navigateToQuestion(Math.max(0, currentQuestionIndex - 1))}
           disabled={currentQuestionIndex === 0}
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
@@ -386,7 +476,7 @@ const TakeTest = () => {
             </Button>
           ) : (
             <Button
-              onClick={() => setCurrentQuestionIndex(prev => Math.min(test.questions.length - 1, prev + 1))}
+              onClick={() => navigateToQuestion(Math.min(test.questions.length - 1, currentQuestionIndex + 1))}
             >
               Следующий
               <ChevronRight className="w-4 h-4 ml-2" />
@@ -410,7 +500,7 @@ const TakeTest = () => {
                 className={`w-10 h-10 p-0 ${
                   userAnswers[test.questions[index].id] ? 'bg-green-100 border-green-300' : ''
                 }`}
-                onClick={() => setCurrentQuestionIndex(index)}
+                onClick={() => navigateToQuestion(index)}
               >
                 {index + 1}
               </Button>
@@ -425,12 +515,42 @@ const TakeTest = () => {
 const QuestionComponent = ({ 
   question, 
   userAnswer, 
-  onAnswerChange 
+  onAnswerChange,
+  test
 }: { 
   question: Question;
   userAnswer?: UserAnswer;
   onAnswerChange: (questionId: string, value: string | string[], isText?: boolean) => void;
+  test: Test;
 }) => {
+  // Для оценочных тестов используем специальный интерфейс с шкалой оценок
+  if (test.test_type === 'assessment' && test.assessment_scales) {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Оценочный тест:</strong> Оцените свой уровень владения данным навыком или знанием
+          </p>
+        </div>
+        <RadioGroup
+          value={userAnswer?.selectedOptions[0] || ''}
+          onValueChange={(value) => onAnswerChange(question.id, value)}
+        >
+          {test.assessment_scales.map((scale) => (
+            <div key={scale.id} className="flex items-center p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+              <div className="flex items-center space-x-3">
+                <RadioGroupItem value={scale.id} id={scale.id} />
+                <Label htmlFor={scale.id} className="cursor-pointer font-medium">
+                  {scale.label}
+                </Label>
+              </div>
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+    );
+  }
+
   if (question.question_type === 'single_choice') {
     return (
       <RadioGroup

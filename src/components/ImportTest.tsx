@@ -126,7 +126,9 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
 
       // 2. Создать тест
       setProgress(40);
-      const maxScore = testData.questions.reduce((sum, q) => sum + (q.points || 1), 0);
+      const maxScore = testData.test_type === 'assessment' && testData.assessment_scales
+        ? testData.questions.length * Math.max(...testData.assessment_scales.map(s => s.points))
+        : testData.questions.reduce((sum, q) => sum + (q.points || 1), 0);
       
       const { data: test, error: testError } = await supabase
         .from('tests')
@@ -136,6 +138,7 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
           category_id: categoryId,
           time_limit_minutes: testData.time_limit_minutes,
           max_score: maxScore,
+          test_type: testData.test_type || 'quiz',
           is_active: true
         })
         .select('id')
@@ -143,11 +146,34 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
 
       if (testError) throw testError;
 
+      // 2.5. Создать шкалу оценок для оценочных тестов
+      if (testData.test_type === 'assessment' && testData.assessment_scales) {
+        setProgress(50);
+        
+        const scalesData = testData.assessment_scales.map((scale, index) => ({
+          test_id: test.id,
+          label: scale.label,
+          points: scale.points,
+          order_index: scale.order_index !== undefined ? scale.order_index : index
+        }));
+
+        const { error: scalesError } = await supabase
+          .from('assessment_scales')
+          .insert(scalesData);
+
+        if (scalesError) throw scalesError;
+      }
+
       // 3. Создать вопросы и варианты ответов
       setProgress(60);
       
       for (let i = 0; i < testData.questions.length; i++) {
         const questionData = testData.questions[i];
+        
+        // Для оценочных тестов используем максимальные баллы из шкалы
+        const questionPoints = testData.test_type === 'assessment' && testData.assessment_scales
+          ? Math.max(...testData.assessment_scales.map(s => s.points))
+          : (questionData.points || 1);
         
         const { data: question, error: questionError } = await supabase
           .from('questions')
@@ -155,7 +181,7 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
             test_id: test.id,
             question_text: questionData.question_text,
             question_type: questionData.question_type,
-            points: questionData.points || 1,
+            points: questionPoints,
             order_index: i
           })
           .select('id')
@@ -163,8 +189,8 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
 
         if (questionError) throw questionError;
 
-        // Создать варианты ответов (только для выборочных вопросов)
-        if (questionData.options && questionData.options.length > 0) {
+        // Создать варианты ответов (только для выборочных вопросов и НЕ для оценочных тестов)
+        if (testData.test_type !== 'assessment' && questionData.options && questionData.options.length > 0) {
           const optionsToInsert = questionData.options.map((option, index) => ({
             question_id: question.id,
             option_text: option.text,
@@ -186,7 +212,9 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
 
       toast({
         title: "Тест успешно импортирован!",
-        description: `Создан тест "${testData.title}" с ${testData.questions.length} вопросами`
+        description: testData.test_type === 'assessment' 
+          ? `Создан оценочный тест "${testData.title}" с ${testData.questions.length} вопросами и ${testData.assessment_scales?.length || 0} уровнями оценки`
+          : `Создан тест "${testData.title}" с ${testData.questions.length} вопросами`
       });
 
       setOpen(false);
@@ -212,6 +240,7 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
       title: "Пример теста по компьютерной грамотности",
       description: "Демонстрационный тест для понимания структуры JSON файла",
       category: "Компьютерная грамотность",
+      test_type: "quiz",
       time_limit_minutes: 30,
       questions: [
         {
@@ -349,14 +378,40 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
                 
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant="secondary">Категория: {testData.category}</Badge>
+                  <Badge variant={testData.test_type === 'assessment' ? "outline" : "destructive"}>
+                    {testData.test_type === 'assessment' ? 'Оценочный тест' : 'Обычный тест'}
+                  </Badge>
                   <Badge variant="outline">Вопросов: {testData.questions.length}</Badge>
                   {testData.time_limit_minutes && (
                     <Badge variant="outline">Время: {testData.time_limit_minutes} мин</Badge>
                   )}
                   <Badge variant="outline">
-                    Баллов: {testData.questions.reduce((sum, q) => sum + (q.points || 1), 0)}
+                    Баллов: {testData.test_type === 'assessment' && testData.assessment_scales
+                      ? `${testData.questions.length * Math.max(...testData.assessment_scales.map(s => s.points))} (макс)`
+                      : testData.questions.reduce((sum, q) => sum + (q.points || 1), 0)
+                    }
                   </Badge>
+                  {testData.test_type === 'assessment' && testData.assessment_scales && (
+                    <Badge variant="outline">Шкала: {testData.assessment_scales.length} уровней</Badge>
+                  )}
                 </div>
+
+                {/* Assessment Scale Preview */}
+                {testData.test_type === 'assessment' && testData.assessment_scales && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Шкала оценок:</h4>
+                    <div className="space-y-1">
+                      {testData.assessment_scales
+                        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                        .map((scale, index) => (
+                          <div key={index} className="text-sm p-2 bg-blue-50 rounded flex justify-between items-center">
+                            <span>{scale.label}</span>
+                            <Badge size="sm" variant="outline">{scale.points} балл</Badge>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Вопросы:</h4>
@@ -366,7 +421,11 @@ const ImportTest = ({ onSuccess }: ImportTestProps) => {
                         <span className="font-medium">{index + 1}.</span> {q.question_text}
                         <div className="flex gap-2 mt-1">
                           <Badge size="sm" variant="outline">{q.question_type}</Badge>
-                          <Badge size="sm" variant="outline">{q.points || 1} балл</Badge>
+                          {testData.test_type === 'assessment' ? (
+                            <Badge size="sm" variant="outline">Самооценка</Badge>
+                          ) : (
+                            <Badge size="sm" variant="outline">{q.points || 1} балл</Badge>
+                          )}
                         </div>
                       </div>
                     ))}

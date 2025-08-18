@@ -49,6 +49,41 @@ export type Database = {
           },
         ]
       }
+      assessment_scales: {
+        Row: {
+          id: string
+          test_id: string
+          label: string
+          points: number
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          test_id: string
+          label: string
+          points: number
+          order_index?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          test_id?: string
+          label?: string
+          points?: number
+          order_index?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_scales_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -88,6 +123,7 @@ export type Database = {
           question_text: string
           question_type: string
           test_id: string
+          question_type_enum: string
         }
         Insert: {
           created_at?: string
@@ -97,6 +133,7 @@ export type Database = {
           question_text: string
           question_type?: string
           test_id: string
+          question_type_enum?: string
         }
         Update: {
           created_at?: string
@@ -106,6 +143,7 @@ export type Database = {
           question_text?: string
           question_type?: string
           test_id?: string
+          question_type_enum?: string
         }
         Relationships: [
           {
@@ -191,6 +229,7 @@ export type Database = {
           time_limit_minutes: number | null
           title: string
           updated_at: string
+          test_type: string
         }
         Insert: {
           created_at?: string
@@ -203,6 +242,7 @@ export type Database = {
           time_limit_minutes?: number | null
           title: string
           updated_at?: string
+          test_type?: string
         }
         Update: {
           created_at?: string
@@ -215,6 +255,7 @@ export type Database = {
           time_limit_minutes?: number | null
           title?: string
           updated_at?: string
+          test_type?: string
         }
         Relationships: [
           {

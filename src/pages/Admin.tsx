@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import ImportTest from '@/components/ImportTest';
+import SmartGroupGenerator from '@/components/SmartGroupGenerator';
 import { useGroups } from '@/hooks/useGroups';
 import { 
   Plus, 
@@ -36,6 +37,7 @@ interface Test {
   time_limit_minutes: number | null;
   is_active: boolean;
   created_at: string;
+  test_type: string;
   categories: {
     id: string;
     name: string;
@@ -148,6 +150,7 @@ const Admin = () => {
 
   const handleCreateTest = async (formData: FormData) => {
     try {
+      const testType = formData.get('test_type') as string || 'quiz';
       const testData = {
         title: formData.get('title') as string,
         description: formData.get('description') as string || null,
@@ -155,18 +158,46 @@ const Admin = () => {
         time_limit_minutes: formData.get('time_limit') ? parseInt(formData.get('time_limit') as string) : null,
         max_score: 0, // Will be calculated based on questions
         created_by: user?.id,
-        is_active: false // Start as inactive until questions are added
+        is_active: false, // Start as inactive until questions are added
+        test_type: testType
       };
 
-      const { error } = await supabase
+      const { data: createdTest, error } = await supabase
         .from('tests')
-        .insert(testData);
+        .insert(testData)
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Если это оценочный тест, создаем шкалу оценок по умолчанию
+      if (testType === 'assessment') {
+        const defaultScales = [
+          { label: 'Плохо владею', points: 1, order_index: 1 },
+          { label: 'Нормально владею', points: 2, order_index: 2 },
+          { label: 'Хорошо владею', points: 3, order_index: 3 },
+          { label: 'Отлично владею', points: 4, order_index: 4 }
+        ];
+
+        const scalesData = defaultScales.map(scale => ({
+          ...scale,
+          test_id: createdTest.id
+        }));
+
+        const { error: scalesError } = await supabase
+          .from('assessment_scales')
+          .insert(scalesData);
+
+        if (scalesError) {
+          console.error('Error creating assessment scales:', scalesError);
+        }
+      }
+
       toast({
         title: "Тест создан",
-        description: "Тест успешно создан. Теперь добавьте вопросы."
+        description: testType === 'assessment' 
+          ? "Оценочный тест создан с базовой шкалой оценок. Теперь добавьте вопросы."
+          : "Тест успешно создан. Теперь добавьте вопросы."
       });
 
       setCreateTestOpen(false);
@@ -482,10 +513,11 @@ const Admin = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="tests" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="tests">Тесты</TabsTrigger>
           <TabsTrigger value="categories">Разделы</TabsTrigger>
           <TabsTrigger value="groups">Группы</TabsTrigger>
+          <TabsTrigger value="smart-groups">Умные группы</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
@@ -519,6 +551,18 @@ const Admin = () => {
                   <div className="space-y-2">
                     <Label htmlFor="description">Описание</Label>
                     <Textarea id="description" name="description" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="test_type">Тип теста</Label>
+                    <Select name="test_type" defaultValue="quiz">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тип теста" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="quiz">Обычный тест (с правильными ответами)</SelectItem>
+                        <SelectItem value="assessment">Оценочный тест (самооценка навыков)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category_id">Раздел</Label>
@@ -558,6 +602,9 @@ const Admin = () => {
                         <span>{test.title}</span>
                         <Badge variant={test.is_active ? "default" : "secondary"}>
                           {test.is_active ? 'Активен' : 'Неактивен'}
+                        </Badge>
+                        <Badge variant={test.test_type === 'assessment' ? "outline" : "destructive"}>
+                          {test.test_type === 'assessment' ? 'Оценочный' : 'Обычный'}
                         </Badge>
                       </CardTitle>
                       <CardDescription>
@@ -1008,6 +1055,10 @@ const Admin = () => {
               )}
             </DialogContent>
           </Dialog>
+        </TabsContent>
+
+        <TabsContent value="smart-groups" className="mt-6">
+          <SmartGroupGenerator />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">

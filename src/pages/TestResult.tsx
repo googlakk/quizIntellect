@@ -27,6 +27,7 @@ interface TestResult {
   tests: {
     title: string;
     description: string;
+    test_type: string;
     categories: {
       name: string;
     };
@@ -58,6 +59,7 @@ const TestResult = () => {
           tests (
             title,
             description,
+            test_type,
             categories:category_id (name)
           )
         `)
@@ -93,7 +95,17 @@ const TestResult = () => {
     }
   };
 
-  const getGradeInfo = (percentage: number) => {
+  const getGradeInfo = (percentage: number, isAssessment: boolean = false) => {
+    if (isAssessment) {
+      // Для оценочных тестов показываем результат как самооценку
+      return { 
+        grade: 'Самооценка завершена', 
+        color: 'text-blue-600', 
+        bgColor: 'bg-blue-50 border-blue-200',
+        icon: <CheckCircle className="w-5 h-5 text-blue-600" />
+      };
+    }
+
     if (percentage >= 90) {
       return { 
         grade: 'Отлично', 
@@ -144,7 +156,8 @@ const TestResult = () => {
     );
   }
 
-  const gradeInfo = getGradeInfo(result.percentage);
+  const isAssessment = result.tests.test_type === 'assessment';
+  const gradeInfo = getGradeInfo(result.percentage, isAssessment);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -154,9 +167,16 @@ const TestResult = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             {gradeInfo.icon}
           </div>
-          <CardTitle className="text-3xl">Тест завершен!</CardTitle>
+          <CardTitle className="text-3xl">
+            {isAssessment ? 'Самооценка завершена!' : 'Тест завершен!'}
+          </CardTitle>
           <CardDescription className="text-lg">
             {result.tests.title} - {result.tests.categories.name}
+            {isAssessment && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                Оценочный тест - результат отражает вашу самооценку навыков
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -167,7 +187,7 @@ const TestResult = () => {
         <Card className={gradeInfo.bgColor}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Ваш результат</span>
+              <span>{isAssessment ? 'Ваша самооценка' : 'Ваш результат'}</span>
               <Badge variant="outline" className={gradeInfo.color}>
                 {gradeInfo.grade}
               </Badge>
@@ -181,9 +201,15 @@ const TestResult = () => {
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {result.score} из {result.max_score} баллов
+                  {isAssessment && ' (самооценка)'}
                 </div>
               </div>
               <Progress value={result.percentage} className="h-3" />
+              {isAssessment && (
+                <div className="text-xs text-center text-muted-foreground">
+                  Результат основан на вашей самооценке навыков и знаний
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -208,7 +234,9 @@ const TestResult = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Target className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Правильных ответов</span>
+                  <span className="text-sm">
+                    {isAssessment ? 'Уровень самооценки' : 'Правильных ответов'}
+                  </span>
                 </div>
                 <span className="font-medium">
                   {Math.round((result.score / result.max_score) * 100)}%

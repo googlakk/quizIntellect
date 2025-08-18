@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createQuestionWithOptionsSchema, CreateQuestionWithOptionsFormData } from '@/lib/validations';
+import { createQuestionWithOptionsSchema, CreateQuestionWithOptionsFormData, editTestSchema, EditTestFormData } from '@/lib/validations';
 import { LoadingState } from '@/components/ui/loading-spinner';
 import { ErrorMessage } from '@/components/ui/error-boundary';
 import { useAsyncOperation } from '@/hooks/useAsyncOperation';
@@ -42,10 +42,17 @@ interface Test {
   max_score: number;
   time_limit_minutes: number | null;
   is_active: boolean;
+  test_type: string;
   categories: {
     id: string;
     name: string;
   };
+  assessment_scales?: {
+    id: string;
+    label: string;
+    points: number;
+    order_index: number;
+  }[];
 }
 
 interface Question {
@@ -54,6 +61,7 @@ interface Question {
   question_type: string;
   points: number;
   order_index: number;
+  time_limit_seconds?: number;
   answer_options: {
     id: string;
     option_text: string;
@@ -81,8 +89,11 @@ const EditTest = () => {
   
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [createQuestionOpen, setCreateQuestionOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editQuestionOpen, setEditQuestionOpen] = useState(false);
+  const [editTestOpen, setEditTestOpen] = useState(false);
 
   const { loading, error, execute } = useAsyncOperation({
     showErrorToast: true,
@@ -96,10 +107,37 @@ const EditTest = () => {
       question_type: 'single_choice',
       points: 1,
       order_index: 0,
+      time_limit_seconds: undefined,
       answer_options: [
         { option_text: '', is_correct: true, order_index: 0 },
         { option_text: '', is_correct: false, order_index: 1 }
       ]
+    }
+  });
+
+  const editQuestionForm = useForm<CreateQuestionWithOptionsFormData>({
+    resolver: zodResolver(createQuestionWithOptionsSchema),
+    defaultValues: {
+      question_text: '',
+      question_type: 'single_choice',
+      points: 1,
+      order_index: 0,
+      time_limit_seconds: undefined,
+      answer_options: [
+        { option_text: '', is_correct: true, order_index: 0 },
+        { option_text: '', is_correct: false, order_index: 1 }
+      ]
+    }
+  });
+
+  const editTestForm = useForm<EditTestFormData>({
+    resolver: zodResolver(editTestSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      category_id: '',
+      time_limit_minutes: undefined,
+      is_active: true
     }
   });
 
@@ -108,9 +146,16 @@ const EditTest = () => {
     name: 'answer_options'
   });
 
+  const { fields: editFields, append: editAppend, remove: editRemove } = useFieldArray({
+    control: editQuestionForm.control,
+    name: 'answer_options'
+  });
+
   useEffect(() => {
     if (testId) {
-      execute(() => fetchTestData());
+      execute(async () => {
+        await Promise.all([fetchTestData(), fetchCategories()]);
+      });
     }
   }, [testId]);
 
@@ -120,7 +165,13 @@ const EditTest = () => {
       .from('tests')
       .select(`
         *,
-        categories:category_id (id, name)
+        categories:category_id (id, name),
+        assessment_scales (
+          id,
+          label,
+          points,
+          order_index
+        )
       `)
       .eq('id', testId)
       .single();
@@ -158,10 +209,77 @@ const EditTest = () => {
     setQuestions(sortedQuestions as Question[]);
   };
 
+  const fetchCategories = async () => {
+    const { data: categoriesData, error: categoriesError } = await supabase
+      .from('categories')
+      .select('id, name')
+      .order('name');
+
+    if (categoriesError) {
+      throw new Error('Не удалось загрузить категории');
+    }
+
+    setCategories(categoriesData || []);
+  };
+
+  const handleEditTest = () => {
+    if (!test) return;
+    
+    editTestForm.reset({
+      title: test.title,
+      description: test.description || '',
+      category_id: test.categories.id,
+      time_limit_minutes: test.time_limit_minutes || undefined,
+      is_active: test.is_active
+    });
+    
+    setEditTestOpen(true);
+  };
+
+  const handleUpdateTest = async (data: EditTestFormData) => {
+    if (!test) return;
+
+    try {
+      const { error } = await supabase
+        .from('tests')
+        .update({
+          title: data.title,
+          description: data.description || null,
+          category_id: data.category_id,
+          time_limit_minutes: data.time_limit_minutes || null,
+          is_active: data.is_active
+        })
+        .eq('id', test.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Тест обновлен",
+        description: "Настройки теста успешно сохранены"
+      });
+
+      setEditTestOpen(false);
+      // Перезагружаем данные теста
+      await fetchTestData();
+    } catch (error) {
+      console.error('Error updating test:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить тест",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleCreateQuestion = async (data: CreateQuestionWithOptionsFormData) => {
     if (!test) return;
 
     try {
+      // Для оценочных тестов устанавливаем максимальные баллы из шкалы
+      const questionPoints = test.test_type === 'assessment' 
+        ? (test.assessment_scales?.reduce((max, scale) => Math.max(max, scale.points), 0) || 4)
+        : data.points;
+
       // Create question
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
@@ -169,16 +287,17 @@ const EditTest = () => {
           test_id: test.id,
           question_text: data.question_text,
           question_type: data.question_type,
-          points: data.points,
-          order_index: questions.length
+          points: questionPoints,
+          order_index: questions.length,
+          time_limit_seconds: data.time_limit_seconds
         })
         .select()
         .single();
 
       if (questionError) throw questionError;
 
-      // Create answer options (only for choice questions)
-      if (data.question_type !== 'text' && data.answer_options.length > 0) {
+      // Create answer options (only for choice questions and NOT for assessment tests)
+      if (test.test_type !== 'assessment' && data.question_type !== 'text' && data.answer_options.length > 0) {
         const optionsToInsert = data.answer_options.map((option, index) => ({
           question_id: questionData.id,
           option_text: option.option_text,
@@ -194,7 +313,7 @@ const EditTest = () => {
       }
 
       // Update test max score
-      const newMaxScore = questions.reduce((sum, q) => sum + q.points, 0) + data.points;
+      const newMaxScore = questions.reduce((sum, q) => sum + q.points, 0) + questionPoints;
       await supabase
         .from('tests')
         .update({ max_score: newMaxScore })
@@ -213,6 +332,91 @@ const EditTest = () => {
       toast({
         title: "Ошибка",
         description: "Не удалось создать вопрос",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditQuestion = (question: Question) => {
+    setEditingQuestion(question);
+    
+    // Заполняем форму данными вопроса
+    editQuestionForm.reset({
+      question_text: question.question_text,
+      question_type: question.question_type as any,
+      points: question.points,
+      order_index: question.order_index,
+      time_limit_seconds: question.time_limit_seconds,
+      answer_options: question.answer_options.map(opt => ({
+        option_text: opt.option_text,
+        is_correct: opt.is_correct,
+        order_index: opt.order_index
+      }))
+    });
+    
+    setEditQuestionOpen(true);
+  };
+
+  const handleUpdateQuestion = async (data: CreateQuestionWithOptionsFormData) => {
+    if (!editingQuestion || !test) return;
+
+    try {
+      // Для оценочных тестов устанавливаем максимальные баллы из шкалы
+      const questionPoints = test.test_type === 'assessment' 
+        ? (test.assessment_scales?.reduce((max, scale) => Math.max(max, scale.points), 0) || 4)
+        : data.points;
+
+      // Обновляем вопрос
+      const { error: questionError } = await supabase
+        .from('questions')
+        .update({
+          question_text: data.question_text,
+          question_type: data.question_type,
+          points: questionPoints,
+          time_limit_seconds: data.time_limit_seconds
+        })
+        .eq('id', editingQuestion.id);
+
+      if (questionError) throw questionError;
+
+      // Удаляем старые варианты ответов (только для обычных тестов)
+      if (test.test_type !== 'assessment') {
+        await supabase
+          .from('answer_options')
+          .delete()
+          .eq('question_id', editingQuestion.id);
+
+        // Создаем новые варианты ответов (только для выборочных вопросов)
+        if (data.question_type !== 'text' && data.answer_options.length > 0) {
+          const optionsToInsert = data.answer_options.map((option, index) => ({
+            question_id: editingQuestion.id,
+            option_text: option.option_text,
+            is_correct: option.is_correct,
+            order_index: index
+          }));
+
+          const { error: optionsError } = await supabase
+            .from('answer_options')
+            .insert(optionsToInsert);
+
+          if (optionsError) throw optionsError;
+        }
+      }
+
+      toast({
+        title: "Вопрос обновлен",
+        description: "Вопрос успешно обновлен"
+      });
+
+      setEditQuestionOpen(false);
+      setEditingQuestion(null);
+      editQuestionForm.reset();
+      fetchTestData();
+    } catch (error) {
+      console.error('Error updating question:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить вопрос",
         variant: "destructive"
       });
     }
@@ -259,6 +463,20 @@ const EditTest = () => {
     }
   };
 
+  const addEditAnswerOption = () => {
+    editAppend({
+      option_text: '',
+      is_correct: false,
+      order_index: editFields.length
+    });
+  };
+
+  const removeEditAnswerOption = (index: number) => {
+    if (editFields.length > 2) {
+      editRemove(index);
+    }
+  };
+
   if (loading) {
     return <LoadingState message="Загрузка теста..." />;
   }
@@ -299,11 +517,11 @@ const EditTest = () => {
           <Badge variant={test.is_active ? "default" : "secondary"}>
             {test.is_active ? 'Активен' : 'Неактивен'}
           </Badge>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleEditTest}>
             <Settings className="w-4 h-4 mr-2" />
             Настройки
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => navigate(`/test/${test.id}`)}>
             <Eye className="w-4 h-4 mr-2" />
             Предпросмотр
           </Button>
@@ -384,7 +602,7 @@ const EditTest = () => {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={createQuestionForm.control}
                         name="question_type"
@@ -413,33 +631,97 @@ const EditTest = () => {
                         name="points"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Баллы</FormLabel>
+                            <FormLabel>
+                              {test?.test_type === 'assessment' ? 'Макс. баллы' : 'Баллы'}
+                            </FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
                                 min="1"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                disabled={test?.test_type === 'assessment'}
+                                value={test?.test_type === 'assessment' ? test.assessment_scales?.reduce((max, scale) => Math.max(max, scale.points), 0) || 4 : field.value}
                               />
                             </FormControl>
+                            {test?.test_type === 'assessment' && (
+                              <p className="text-xs text-muted-foreground">
+                                Автоматически установлено по шкале оценок
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={createQuestionForm.control}
+                        name="time_limit_seconds"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Время (секунды)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                placeholder="Без ограничений"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              Время на ответ для этого вопроса
+                            </p>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
 
-                    {/* Answer Options */}
+                    {/* Answer Options - Different interface for assessment tests */}
                     {createQuestionForm.watch('question_type') !== 'text' && (
                       <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <Label>Варианты ответов</Label>
-                          <Button type="button" variant="outline" size="sm" onClick={addAnswerOption}>
-                            <Plus className="w-3 h-3 mr-1" />
-                            Добавить вариант
-                          </Button>
-                        </div>
+                        {test?.test_type === 'assessment' ? (
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 className="font-medium text-blue-800 mb-2">🎯 Оценочный тест</h4>
+                            <p className="text-sm text-blue-700 mb-3">
+                              Для оценочных тестов используется единая шкала оценок. Вопросы не имеют правильных/неправильных ответов - пользователи оценивают свой уровень владения навыком.
+                            </p>
+                            
+                            {test.assessment_scales && test.assessment_scales.length > 0 ? (
+                              <div className="space-y-2">
+                                <Label className="text-blue-800">Используемая шкала оценок:</Label>
+                                {test.assessment_scales
+                                  .sort((a, b) => a.order_index - b.order_index)
+                                  .map((scale) => (
+                                    <div key={scale.id} className="flex justify-between items-center p-2 bg-white border rounded">
+                                      <span className="text-sm">{scale.label}</span>
+                                      <Badge variant="outline">{scale.points} {scale.points === 1 ? 'балл' : scale.points < 5 ? 'балла' : 'баллов'}</Badge>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-amber-600">
+                                ⚠️ Шкала оценок не настроена для этого теста
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <Label>Варианты ответов</Label>
+                              <Button type="button" variant="outline" size="sm" onClick={addAnswerOption}>
+                                <Plus className="w-3 h-3 mr-1" />
+                                Добавить вариант
+                              </Button>
+                            </div>
+                          </>
+                        )}
                         
-                        {fields.map((field, index) => (
+                        {/* Show regular answer options only for non-assessment tests */}
+                        {test?.test_type !== 'assessment' && (
+                          <>
+                          {fields.map((field, index) => (
                           <div key={field.id} className="flex items-start space-x-2 p-3 border rounded-lg">
                             <FormField
                               control={createQuestionForm.control}
@@ -499,6 +781,8 @@ const EditTest = () => {
                             )}
                           </div>
                         ))}
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -509,6 +793,361 @@ const EditTest = () => {
                       <Button type="submit">
                         <Save className="w-4 h-4 mr-2" />
                         Создать вопрос
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Question Dialog */}
+            <Dialog open={editQuestionOpen} onOpenChange={setEditQuestionOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать вопрос</DialogTitle>
+                  <DialogDescription>
+                    Измените вопрос и варианты ответов
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...editQuestionForm}>
+                  <form onSubmit={editQuestionForm.handleSubmit(handleUpdateQuestion)} className="space-y-6">
+                    <FormField
+                      control={editQuestionForm.control}
+                      name="question_text"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Текст вопроса</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Введите текст вопроса..."
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={editQuestionForm.control}
+                        name="question_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Тип вопроса</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="single_choice">Один вариант</SelectItem>
+                                <SelectItem value="multiple_choice">Несколько вариантов</SelectItem>
+                                <SelectItem value="text">Текстовый ответ</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={editQuestionForm.control}
+                        name="points"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {test?.test_type === 'assessment' ? 'Макс. баллы' : 'Баллы'}
+                            </FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                disabled={test?.test_type === 'assessment'}
+                                value={test?.test_type === 'assessment' ? test.assessment_scales?.reduce((max, scale) => Math.max(max, scale.points), 0) || 4 : field.value}
+                              />
+                            </FormControl>
+                            {test?.test_type === 'assessment' && (
+                              <p className="text-xs text-muted-foreground">
+                                Автоматически установлено по шкале оценок
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={editQuestionForm.control}
+                        name="time_limit_seconds"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Время (секунды)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                placeholder="Без ограничений"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              Время на ответ для этого вопроса
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Answer Options for Edit */}
+                    {editQuestionForm.watch('question_type') !== 'text' && (
+                      <div className="space-y-4">
+                        {test?.test_type === 'assessment' ? (
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h4 className="font-medium text-blue-800 mb-2">🎯 Оценочный тест</h4>
+                            <p className="text-sm text-blue-700 mb-3">
+                              Для оценочных тестов используется единая шкала оценок. Вопросы не имеют правильных/неправильных ответов - пользователи оценивают свой уровень владения навыком.
+                            </p>
+                            
+                            {test.assessment_scales && test.assessment_scales.length > 0 ? (
+                              <div className="space-y-2">
+                                <Label className="text-blue-800">Используемая шкала оценок:</Label>
+                                {test.assessment_scales
+                                  .sort((a, b) => a.order_index - b.order_index)
+                                  .map((scale) => (
+                                    <div key={scale.id} className="flex justify-between items-center p-2 bg-white border rounded">
+                                      <span className="text-sm">{scale.label}</span>
+                                      <Badge variant="outline">{scale.points} {scale.points === 1 ? 'балл' : scale.points < 5 ? 'балла' : 'баллов'}</Badge>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-amber-600">
+                                ⚠️ Шкала оценок не настроена для этого теста
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <Label>Варианты ответов</Label>
+                              <Button type="button" variant="outline" size="sm" onClick={addEditAnswerOption}>
+                                <Plus className="w-3 h-3 mr-1" />
+                                Добавить вариант
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                        
+                        {/* Show regular answer options only for non-assessment tests */}
+                        {test?.test_type !== 'assessment' && (
+                          <>
+                          {editFields.map((field, index) => (
+                          <div key={field.id} className="flex items-start space-x-2 p-3 border rounded-lg">
+                            <FormField
+                              control={editQuestionForm.control}
+                              name={`answer_options.${index}.is_correct`}
+                              render={({ field }) => (
+                                <FormItem className="flex items-center space-x-2 pt-2">
+                                  <FormControl>
+                                    {editQuestionForm.watch('question_type') === 'single_choice' ? (
+                                      <RadioGroup
+                                        value={editQuestionForm.getValues('answer_options').findIndex(opt => opt.is_correct).toString()}
+                                        onValueChange={(value) => {
+                                          const options = editQuestionForm.getValues('answer_options');
+                                          options.forEach((opt, i) => {
+                                            editQuestionForm.setValue(`answer_options.${i}.is_correct`, i === parseInt(value));
+                                          });
+                                        }}
+                                      >
+                                        <RadioGroupItem value={index.toString()} />
+                                      </RadioGroup>
+                                    ) : (
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    )}
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={editQuestionForm.control}
+                              name={`answer_options.${index}.option_text`}
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormControl>
+                                    <Input 
+                                      placeholder={`Вариант ${index + 1}`}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            {editFields.length > 2 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeEditAnswerOption(index)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setEditQuestionOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button type="submit">
+                        <Save className="w-4 h-4 mr-2" />
+                        Сохранить изменения
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Test Dialog */}
+            <Dialog open={editTestOpen} onOpenChange={setEditTestOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Настройки теста</DialogTitle>
+                  <DialogDescription>
+                    Измените основные параметры теста
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...editTestForm}>
+                  <form onSubmit={editTestForm.handleSubmit(handleUpdateTest)} className="space-y-6">
+                    <FormField
+                      control={editTestForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Название теста</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Введите название теста..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editTestForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Описание</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Краткое описание теста..."
+                              className="min-h-[80px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editTestForm.control}
+                      name="category_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Категория</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Выберите категорию" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editTestForm.control}
+                      name="time_limit_minutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Лимит времени (минуты)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1"
+                              placeholder="Без ограничений"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Оставьте пустым для неограниченного времени
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editTestForm.control}
+                      name="is_active"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                              Активный тест
+                            </FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              Только активные тесты доступны для прохождения
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setEditTestOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button type="submit">
+                        <Save className="w-4 h-4 mr-2" />
+                        Сохранить изменения
                       </Button>
                     </div>
                   </form>
@@ -542,10 +1181,10 @@ const EditTest = () => {
                           <p className="text-sm font-medium">{question.question_text}</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleEditQuestion(question)}>
                             <Edit className="w-3 h-3" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => toast({ title: "В разработке", description: "Функция перемещения вопроса будет добавлена в ближайшее время" })}>
                             <Move className="w-3 h-3" />
                           </Button>
                           <Button 

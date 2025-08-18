@@ -16,7 +16,8 @@ import {
   Settings, 
   LogOut, 
   User,
-  Trophy 
+  Trophy,
+  Users
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,6 +76,7 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Главная', href: '/', icon: GraduationCap },
     { name: 'Тесты', href: '/tests', icon: BookOpen },
     { name: 'Рейтинг', href: '/leaderboard', icon: Trophy },
+    { name: 'Группы', href: '/groups', icon: Users },
     ...(isAdmin() ? [{ name: 'Админ', href: '/admin', icon: Settings }] : []),
   ];
 

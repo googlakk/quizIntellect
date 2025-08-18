@@ -274,6 +274,74 @@ export type Database = {
           },
         ]
       }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          group_size: number
+          created_at: string
+          created_by: string | null
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          group_size: number
+          created_at?: string
+          created_by?: string | null
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          group_size?: number
+          created_at?: string
+          created_by?: string | null
+          is_active?: boolean
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          assigned_at: string
+          performance_tier: string | null
+          total_score: number
+          average_percentage: number
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id: string
+          assigned_at?: string
+          performance_tier?: string | null
+          total_score?: number
+          average_percentage?: number
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string
+          assigned_at?: string
+          performance_tier?: string | null
+          total_score?: number
+          average_percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

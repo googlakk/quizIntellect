@@ -12,14 +12,15 @@ import { Navigate, Link, useLocation } from 'react-router-dom';
 import { 
   GraduationCap, 
   BookOpen, 
-  BarChart3, 
   Settings, 
-  LogOut, 
-  User,
+  LogOut,
   Trophy,
-  Users
+  Users,
+  Menu,
+  X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
@@ -37,6 +38,8 @@ const Layout = ({ children }: LayoutProps) => {
   const { isAdmin, profile: userProfile } = useRole();
   const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (user) {
@@ -96,6 +99,7 @@ const Layout = ({ children }: LayoutProps) => {
                 </span>
               </Link>
               
+              {/* Desktop Navigation */}
               <nav className="hidden md:ml-8 md:flex md:space-x-1">
                 {navigation.map((item) => {
                   const Icon = item.icon;
@@ -119,6 +123,20 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative">
@@ -134,14 +152,6 @@ const Layout = ({ children }: LayoutProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Профиль</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    <span>Статистика</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Выйти</span>
@@ -151,6 +161,33 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t bg-card">
+            <div className="px-4 py-3 space-y-1">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center w-full px-3 py-2 rounded-md text-sm font-medium transition-all duration-medium ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-glow'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-3" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}

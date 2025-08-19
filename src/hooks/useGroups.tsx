@@ -463,16 +463,21 @@ export const useGroups = () => {
     try {
       const leaderboardData = await getLeaderboardData();
       
-      if (!excludeGroupId) return leaderboardData;
-
-      // Получаем список пользователей, уже состоящих в группах
+      // Получаем список пользователей, уже состоящих в АКТИВНЫХ группах
       const { data: groupMembers } = await supabase
         .from('group_members')
-        .select('user_id, group_id')
-        .neq('group_id', excludeGroupId);
+        .select(`
+          user_id,
+          groups!inner (
+            id,
+            is_active
+          )
+        `)
+        .eq('groups.is_active', true);
 
       const usedUserIds = new Set(groupMembers?.map(member => member.user_id) || []);
       
+      // Возвращаем только пользователей, которые НЕ состоят ни в одной активной группе
       return leaderboardData.filter(user => !usedUserIds.has(user.user_id));
     } catch (error) {
       console.error('Error getting available users:', error);

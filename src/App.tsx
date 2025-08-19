@@ -16,6 +16,7 @@ import TestResult from "./pages/TestResult";
 import Admin from "./pages/Admin";
 import EditTest from "./pages/EditTest";
 import Groups from "./pages/Groups";
+import Recommendations from "./pages/Recommendations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
               <Route path="/tests" element={<Layout><Tests /></Layout>} />
               <Route path="/groups" element={<Layout><Groups /></Layout>} />
+              <Route path="/recommendations" element={<Layout><Recommendations /></Layout>} />
               <Route path="/test/:testId" element={<Layout><TakeTest /></Layout>} />
               <Route path="/test/:testId/result" element={<Layout><TestResult /></Layout>} />
               <Route path="/admin" element={

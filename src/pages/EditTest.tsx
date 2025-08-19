@@ -32,7 +32,8 @@ import {
   HelpCircle,
   CheckSquare,
   FileText,
-  Move
+  Move,
+  Sparkles
 } from 'lucide-react';
 
 interface Test {
@@ -43,6 +44,7 @@ interface Test {
   time_limit_minutes: number | null;
   is_active: boolean;
   test_type: string;
+  ai_goal: string | null;
   categories: {
     id: string;
     name: string;
@@ -137,7 +139,8 @@ const EditTest = () => {
       description: '',
       category_id: '',
       time_limit_minutes: undefined,
-      is_active: true
+      is_active: true,
+      ai_goal: ''
     }
   });
 
@@ -230,7 +233,8 @@ const EditTest = () => {
       description: test.description || '',
       category_id: test.categories.id,
       time_limit_minutes: test.time_limit_minutes || undefined,
-      is_active: test.is_active
+      is_active: test.is_active,
+      ai_goal: test.ai_goal || ''
     });
     
     setEditTestOpen(true);
@@ -247,7 +251,8 @@ const EditTest = () => {
           description: data.description || null,
           category_id: data.category_id,
           time_limit_minutes: data.time_limit_minutes || null,
-          is_active: data.is_active
+          is_active: data.is_active,
+          ai_goal: data.ai_goal || null
         })
         .eq('id', test.id);
 
@@ -1112,6 +1117,31 @@ const EditTest = () => {
                           </FormControl>
                           <p className="text-xs text-muted-foreground">
                             Оставьте пустым для неограниченного времени
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editTestForm.control}
+                      name="ai_goal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center space-x-2">
+                            <Sparkles className="w-4 h-4 text-primary" />
+                            <span>Цель ИИ анализа (опционально)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Например: Проанализировать цифровые компетенции учителей и дать персональные рекомендации по развитию навыков работы с технологиями в образовании"
+                              className="min-h-[100px]"
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Если указано, ИИ будет анализировать ответы пользователей и давать персональные рекомендации на основе этой цели
                           </p>
                           <FormMessage />
                         </FormItem>

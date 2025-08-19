@@ -17,7 +17,8 @@ import {
   Trophy,
   Users,
   Menu,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -80,6 +81,7 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Тесты', href: '/tests', icon: BookOpen },
     { name: 'Рейтинг', href: '/leaderboard', icon: Trophy },
     { name: 'Группы', href: '/groups', icon: Users },
+    { name: 'Рекомендации', href: '/recommendations', icon: Sparkles },
     ...(isAdmin() ? [{ name: 'Админ', href: '/admin', icon: Settings }] : []),
   ];
 

@@ -15,6 +15,8 @@ import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import ImportTest from '@/components/ImportTest';
 import SmartGroupGenerator from '@/components/SmartGroupGenerator';
+import AdminAIRecommendations from '@/components/AdminAIRecommendations';
+import TestEdgeFunction from '@/components/TestEdgeFunction';
 import { useGroups } from '@/hooks/useGroups';
 import { 
   Plus, 
@@ -159,7 +161,8 @@ const Admin = () => {
         max_score: 0, // Will be calculated based on questions
         created_by: user?.id,
         is_active: false, // Start as inactive until questions are added
-        test_type: testType
+        test_type: testType,
+        ai_goal: formData.get('ai_goal') as string || null
       };
 
       const { data: createdTest, error } = await supabase
@@ -513,11 +516,13 @@ const Admin = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="tests" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="tests">Тесты</TabsTrigger>
           <TabsTrigger value="categories">Разделы</TabsTrigger>
           <TabsTrigger value="groups">Группы</TabsTrigger>
           <TabsTrigger value="smart-groups">Умные группы</TabsTrigger>
+          <TabsTrigger value="ai-recommendations">ИИ Рекомендации</TabsTrigger>
+          <TabsTrigger value="test-edge">Тест ИИ</TabsTrigger>
           <TabsTrigger value="analytics">Аналитика</TabsTrigger>
         </TabsList>
 
@@ -582,6 +587,18 @@ const Admin = () => {
                   <div className="space-y-2">
                     <Label htmlFor="time_limit">Лимит времени (минуты)</Label>
                     <Input id="time_limit" name="time_limit" type="number" min="1" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ai_goal">Цель ИИ анализа (опционально)</Label>
+                    <Textarea 
+                      id="ai_goal" 
+                      name="ai_goal" 
+                      placeholder="Например: Проанализировать цифровые компетенции учителей и дать персональные рекомендации по развитию навыков работы с технологиями в образовании"
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Если указано, ИИ будет анализировать ответы пользователей и давать персональные рекомендации на основе этой цели
+                    </p>
                   </div>
                   <Button type="submit" className="w-full">
                     Создать тест
@@ -1059,6 +1076,20 @@ const Admin = () => {
 
         <TabsContent value="smart-groups" className="mt-6">
           <SmartGroupGenerator />
+        </TabsContent>
+
+        <TabsContent value="ai-recommendations" className="mt-6">
+          <AdminAIRecommendations />
+        </TabsContent>
+
+        <TabsContent value="test-edge" className="mt-6">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold mb-2">Тестирование ИИ функций</h2>
+            <p className="text-muted-foreground">
+              Проверьте работоспособность Edge функций для генерации рекомендаций
+            </p>
+          </div>
+          <TestEdgeFunction />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">

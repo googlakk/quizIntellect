@@ -29,6 +29,7 @@ export const editTestSchema = z.object({
   category_id: z.string().uuid('Выберите корректную категорию'),
   time_limit_minutes: z.number().min(1, 'Лимит времени должен быть больше 0').optional(),
   is_active: z.boolean(),
+  ai_goal: z.string().optional(),
 });
 
 export const createSubjectSchema = z.object({

@@ -14,8 +14,12 @@ import {
   Home,
   BarChart3,
   CheckCircle,
-  XCircle
+  XCircle,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
+import AIRecommendations from '@/components/AIRecommendations';
+import { useAIRecommendations } from '@/hooks/useAIRecommendations';
 
 interface TestResult {
   id: string;
@@ -24,13 +28,16 @@ interface TestResult {
   percentage: number;
   time_taken_minutes: number;
   completed_at: string;
+  answers: any[];
   tests: {
     title: string;
     description: string;
     test_type: string;
+    ai_goal: string | null;
     categories: {
       name: string;
     };
+    questions: any[];
   };
 }
 
@@ -38,13 +45,17 @@ const TestResult = () => {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { generateRecommendations, checkExistingRecommendations, generating } = useAIRecommendations();
   
   const [result, setResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [hasRecommendations, setHasRecommendations] = useState(false);
 
   useEffect(() => {
     if (testId && user) {
       fetchTestResult();
+      fetchProfile();
     }
   }, [testId, user]);
 
@@ -60,7 +71,14 @@ const TestResult = () => {
             title,
             description,
             test_type,
-            categories:category_id (name)
+            ai_goal,
+            categories:category_id (name),
+            questions (
+              id,
+              question_text,
+              question_type,
+              points
+            )
           )
         `)
         .eq('test_id', testId)
@@ -82,6 +100,12 @@ const TestResult = () => {
       }
 
       setResult(data as TestResult);
+      
+      // Проверяем, есть ли уже рекомендации для этого результата
+      if (data.tests.ai_goal && user?.id) {
+        const hasExisting = await checkExistingRecommendations(data.id, user.id);
+        setHasRecommendations(hasExisting);
+      }
     } catch (error) {
       console.error('Error fetching test result:', error);
       toast({
@@ -92,6 +116,92 @@ const TestResult = () => {
       navigate('/tests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleGenerateRecommendations = async () => {
+    if (!result || !user || !profile) {
+      console.error('Отсутствуют необходимые данные:', { result: !!result, user: !!user, profile: !!profile });
+      return;
+    }
+
+    if (!result.tests.ai_goal) {
+      toast({
+        title: "Ошибка",
+        description: "У этого теста не настроена цель ИИ анализа",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('Данные для генерации рекомендаций:', {
+      testResultId: result.id,
+      userId: user.id,
+      testId: testId,
+      aiGoal: result.tests.ai_goal,
+      answersCount: result.answers?.length || 0,
+      questionsCount: result.tests.questions?.length || 0,
+      userProfile: profile.full_name
+    });
+
+    try {
+      // Получаем ответы пользователя из базы данных, если они не загружены
+      let userAnswers = result.answers || [];
+      
+      if (!userAnswers || userAnswers.length === 0) {
+        console.log('Загружаем ответы пользователя из базы данных...');
+        const { data: answersData, error: answersError } = await supabase
+          .from('user_answers')
+          .select('*')
+          .eq('test_result_id', result.id)
+          .order('question_order');
+
+        if (!answersError && answersData) {
+          userAnswers = answersData;
+          console.log('Загружено ответов:', userAnswers.length);
+        }
+      }
+
+      await generateRecommendations({
+        testResultId: result.id,
+        userId: user.id,
+        testId: testId!,
+        aiGoal: result.tests.ai_goal!,
+        userAnswers: userAnswers,
+        testData: {
+          title: result.tests.title,
+          description: result.tests.description || '',
+          questions: result.tests.questions || []
+        },
+        userProfile: {
+          full_name: profile.full_name
+        }
+      });
+
+      setHasRecommendations(true);
+    } catch (error) {
+      console.error('Failed to generate recommendations:', error);
+      toast({
+        title: "Ошибка генерации рекомендаций",
+        description: "Попробуйте еще раз или обратитесь к администратору",
+        variant: "destructive"
+      });
     }
   };
 
@@ -257,6 +367,65 @@ const TestResult = () => {
         </Card>
       </div>
 
+      {/* AI Recommendations Section */}
+      {result?.tests.ai_goal && (
+        <div className="space-y-4">
+          {!hasRecommendations ? (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <span>Персональные рекомендации ИИ</span>
+                </CardTitle>
+                <CardDescription>
+                  Получите индивидуальные советы и рекомендации на основе ваших ответов
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="text-sm font-medium mb-1">Цель анализа:</div>
+                    <div className="text-sm text-muted-foreground">{result.tests.ai_goal}</div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleGenerateRecommendations}
+                    disabled={generating}
+                    className="w-full"
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Анализирую ваши ответы...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Получить рекомендации ИИ
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary mr-2" />
+                  Ваши персональные рекомендации
+                </h3>
+                <p className="text-muted-foreground">
+                  ИИ проанализировал ваши ответы и подготовил индивидуальные советы
+                </p>
+              </div>
+              
+              <AIRecommendations testResultId={result.id} />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Actions */}
       <Card>
         <CardContent className="pt-6">
@@ -272,6 +441,13 @@ const TestResult = () => {
               <Link to="/leaderboard">
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Посмотреть рейтинг
+              </Link>
+            </Button>
+
+            <Button asChild variant="outline">
+              <Link to="/recommendations">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Все рекомендации
               </Link>
             </Button>
           </div>
